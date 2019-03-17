@@ -1,0 +1,49 @@
+- name: Check GitLab exists
+  shell: "gitlab-ctl status"
+  register: gitlab_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install GitLab
+  shell: "{{ item }}"
+  with_items:
+    - "apt-get update"
+    - "apt-get install -y curl"
+    - "apt-get install -y openssh-server"
+    - "apt-get install -y ca-certificates"
+    - "curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-{{ gitlab_revision }}/script.deb.sh | sudo bash"
+    - "apt-get update"
+    #- "EXTERNAL_URL='{{ gitlab_url }}' apt-get install -y gitlab-{{ gitlab_revision }}"
+  when:
+    - "'gitlab-pages:' not in gitlab_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags: install
+
+- name: Check GitLab status
+  shell: "gitlab-ctl status"
+  register: gitlab_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: test
+
+- name: Show GitLab status
+  debug:
+    msg: "{{ gitlab_check.stdout }}"
+  when: "'gitlab-pages:' in gitlab_check.stdout"
+  tags: test
+
+- name: Uninstall GitLab
+  shell: "apt-get remove --purge -y gitlab*"
+  when:
+    - "'gitlab-pages:' in gitlab_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - never
+    - uninstall
