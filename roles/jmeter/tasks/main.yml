@@ -1,0 +1,76 @@
+- name: Check binary file exists
+  stat:
+    path: "/usr/bin/jmeter"
+  register: jmeter_binary
+  changed_when: false
+
+- name: Check download file
+  stat:
+    path: "/tmp/apache-jmeter-{{ jmeter_version }}.tgz"
+  register: jmeter_download
+  when: jmeter_binary.stat.exists == False
+
+- name: Download file
+  shell: "wget {{ jmeter_url }}"
+  args:
+    chdir: /tmp
+  when:
+    - jmeter_binary.stat.exists == False
+    - jmeter_download.stat.exists == False
+
+- name: Check installing folder
+  stat:
+    path: "/opt/jmeter"
+  register: jmeter_folder
+  when: jmeter_binary.stat.exists == False
+
+- name: Check archive
+  stat:
+    path: "/tmp/apache-jmeter-{{ jmeter_version }}.tgz"
+  register: jmeter_arch
+  when: jmeter_binary.stat.exists == False
+
+- name: Unarchive files
+  shell: "{{ item }}"
+  with_items:
+    - "tar -zxf apache-jmeter-{{ jmeter_version }}.tgz"
+    - "mv  apache-jmeter-{{ jmeter_version }} /opt/jmeter"
+  args:
+    chdir: /tmp
+  when:
+    - jmeter_binary.stat.exists == False
+    - jmeter_folder.stat.exists == False
+    - jmeter_arch.stat.exists
+
+- name: Check installing file exists
+  stat:
+    path: "/opt/jmeter/bin/jmeter"
+  register: jmeter_install
+
+- name: Installing jmeter
+  shell: "ln -s /opt/jmeter/bin/jmeter /usr/bin/jmeter"
+  when:
+    - jmeter_binary.stat.exists == False
+    - jmeter_install.stat.exists == True
+
+- name: Installing Plugin manager
+  shell: "{{ item }}"
+  with_items:
+    - "curl {{ jmeter_plugin_url }} -o lib/ext/jmeter-plugins-manager.jar"
+    - "curl {{ jmeter_cmdrunner_url }} -o lib/cmdrunner-{{ jmeter_cmdrunner_version }}.jar"
+    - "java -cp ./lib/ext/jmeter-plugins-manager.jar org.jmeterplugins.repository.PluginManagerCMDInstaller"
+  args:
+    chdir: /opt/jmeter
+  when:
+    - jmeter_install.stat.exists == True
+
+- name: Installing Plugins
+  shell: "./PluginsManagerCMD.sh install {{ item }}"
+  with_items:
+    - "jpgc-casutg"
+    - "jpgc-graphs-basic"
+    - "jpgc-graphs-additional"
+  args:
+    chdir: /opt/jmeter/bin
+  when:
+    - jmeter_install.stat.exists == True

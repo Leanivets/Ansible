@@ -1,0 +1,39 @@
+- name: Check Jenkins Service exists
+  shell: "systemctl status jenkins"
+  register: jenkins_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Download Jenkins CLI
+  shell: "wget {{ jenkins_url }}/jnlpJars/jenkins-cli.jar"
+  when: "'jenkins.service - LSB:' in jenkins_check.stdout"
+  args:
+    chdir: /tmp
+    warn: false
+  tags: always
+
+- name: Install plugins
+  shell: "java -jar jenkins-cli.jar -s {{ jenkins_url }}/ install-plugin {{ item }}"
+  with_items: "{{ plugins }}"
+  when: "'jenkins.service - LSB:' in jenkins_check.stdout"
+  args:
+    chdir: /tmp
+    warn: false
+  environment:
+    - JENKINS_USER_ID: "{{ jenkins_user }}"
+    - JENKINS_API_TOKEN: "{{ jenkins_password }}"
+  tags: install
+
+- name: Postbuild action
+  shell: "{{ item }}"
+  with_items:
+    - "systemctl restart jenkins"
+    - "rm /tmp/jenkins-cli.jar"
+    - "unset JENKINS_USER_ID"
+    - "unset JENKINS_API_TOKEN"
+  when: "'jenkins.service - LSB:' in jenkins_check.stdout"
+  args:
+    warn: false
+  tags: always

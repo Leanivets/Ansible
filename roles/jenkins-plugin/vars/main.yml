@@ -1,0 +1,16 @@
+jenkins_url: 'http://127.0.0.1:8080'
+jenkins_user: 'admin'
+jenkins_password: 'admin'
+plugins:
+- git
+- cloudbees-folder
+- workflow-aggregator
+- ssh-agent
+- ssh-slaves
+- subversion
+- timestamper
+- groovy
+- blueocean
+- pipeline-aws
+- slack
+- gitlab-plugin

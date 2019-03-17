@@ -1,0 +1,8 @@
+jmeter_version: '5.1'
+jmeter_url: 'http://apache.volia.net//jmeter/binaries/apache-jmeter-{{ jmeter_version }}.tgz'
+
+jmeter_plugin_version: '1.3'
+jmeter_plugin_url: "http://search.maven.org/remotecontent?filepath=kg/apc/jmeter-plugins-manager/{{ jmeter_plugin_version }}/jmeter-plugins-manager-{{ jmeter_plugin_version }}.jar"
+
+jmeter_cmdrunner_version: '2.2'
+jmeter_cmdrunner_url: "http://search.maven.org/remotecontent?filepath=kg/apc/cmdrunner/{{ jmeter_cmdrunner_version }}/cmdrunner-{{ jmeter_cmdrunner_version }}.jar"

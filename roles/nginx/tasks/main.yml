@@ -1,0 +1,57 @@
+- name: Check NGINX exists
+  shell: "nginx -v"
+  register: nginx_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install NGINX
+  apt:
+    name: nginx
+    state: latest
+    update_cache: yes
+  when:
+    - "'nginx version' not in nginx_check.stderr"
+    - ansible_os_family == "Debian"
+  tags:
+    - install
+
+- name: Check NGINX version
+  shell: "nginx -v"
+  register: nginx_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Configure UFW
+  shell: "{{ item }}"
+  with_items:
+    - "ufw allow 'Nginx HTTP'"
+    - "ufw allow 'Nginx HTTPS'"
+    - "ufw reload"
+  when:
+    - "'nginx version' in nginx_check.stderr"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - install
+
+- name: Show NGINX version
+  debug:
+    msg: "{{ nginx_check.stderr }}"
+  when: "'nginx version' in nginx_check.stderr"
+  tags: install
+
+- name: Uninstall NGINX
+  shell: "apt-get remove --purge -y nginx*"
+  when:
+    - "'nginx version' in nginx_check.stderr"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - never
+    - uninstall

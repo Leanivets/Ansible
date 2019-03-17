@@ -1,0 +1,42 @@
+- name: Check Artillery exists
+  shell: "artillery -V dino"
+  register: artillery_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install Artillery
+  shell: "npm install -g artillery --unsafe-perm=true --allow-root"
+  when:
+    - "'Version Info' not in artillery_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - install
+
+- name: Check Artillery version
+  shell: "artillery -V dino"
+  register: artillery_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Show Artillery version
+  debug:
+    msg: "{{ artillery_check.stdout }}"
+  when: "'Version Info' in artillery_check.stdout"
+  tags: install
+
+- name: Uninstall Artillery
+  shell: "npm uninstall -g --save artillery"
+  when:
+    - "'Version Info' in artillery_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - never
+    - uninstall

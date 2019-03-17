@@ -1,0 +1,49 @@
+- name: Check Docker exists
+  shell: "docker -v"
+  register: docker_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install Docker CE
+  shell: "{{ item }}"
+  with_items:
+    - "apt-get update"
+    - "apt-get install -y apt-transport-https"
+    - "apt-get install -y software-properties-common"
+    - "sh -c 'curl -fsSL https://download.docker.com/linux/{{ ansible_distribution|lower }}/gpg | apt-key add -'"
+    - 'add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution|lower }} $(lsb_release -cs) stable"'
+    - "apt-get update"
+    - "apt-get install -y docker-ce"
+  when:
+    - "'Docker version' not in docker_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags: install
+
+- name: Check Docker version
+  shell: "docker -v"
+  register: docker_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Show Docker version
+  debug:
+    msg: "{{ docker_check.stdout }}"
+  when: "'Docker version' in docker_check.stdout"
+  tags: install
+
+- name: Uninstall Docker CE
+  shell: "apt-get remove --purge -y docker-ce*"
+  when:
+    - "'Docker version' in docker_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - never
+    - uninstall

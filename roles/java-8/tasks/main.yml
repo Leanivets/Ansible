@@ -1,0 +1,63 @@
+- name: Check binary file exists
+  shell: "java -version"
+  register: java_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Download file
+  shell: "wget --no-check-certificate --no-cookies --header 'Cookie: oraclelicense=accept-securebackup-cookie' {{ java_url }}"
+  when: "'java version' not in java_check.stderr"
+  args:
+    chdir: /tmp
+    warn: false
+  tags: install
+
+- name: Check archive file
+  stat:
+    path: "/tmp/{{ java_archive }}"
+  register: java_arch
+  when: "'java version' not in java_check.stderr"
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Unarchive files
+  shell: "{{ item }}"
+  with_items:
+    - "tar -zxf {{ java_archive }}"
+    - "mv {{ java_version }} /usr/"
+  args:
+    chdir: /tmp
+    warn: false
+  when:
+    - "'java version' not in java_check.stderr"
+    - java_arch.stat.exists
+  tags: install
+
+- name: Check installing file exists
+  stat:
+    path: "/usr/{{ java_version }}/bin/java"
+  register: java_install
+  when: "'java version' not in java_check.stderr"
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Installing java
+  shell: "{{ item }}"
+  with_items:
+    - "update-alternatives --install /usr/bin/java java /usr/{{ java_version }}/bin/java 2"
+    - "export PATH=$JAVA_HOME/bin:$PATH"
+    - "export JAVA_HOME=/usr/{{ java_version }}*"
+    - "export PATH=$JAVA_HOME/bin:$PATH"
+  when:
+    - "'java version' not in java_check.stderr"
+    - java_install.stat.exists
+  ignore_errors: true
+  args:
+    warn: false
+  tags: install

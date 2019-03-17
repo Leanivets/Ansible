@@ -1,0 +1,10 @@
+- hosts: ec2
+  gather_facts: yes
+  become: yes
+
+  roles:
+    - jenkins
+    - jenkins-plugin
+    - docker
+    - docker-compose
+    - aws-cli

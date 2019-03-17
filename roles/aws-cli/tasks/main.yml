@@ -1,0 +1,34 @@
+- name: Check AWS CLI exists
+  shell: "aws --version"
+  register: aws_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install AWS CLI
+  shell: "{{ item }}"
+  with_items:
+    - apt-get install -y python-pip
+    - pip install awscli --upgrade
+  when:
+    - "'aws-cli' not in aws_check.stderr"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - install
+
+- name: Check AWS CLI version
+  shell: "aws --version"
+  register: aws_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Show AWS CLI version
+  debug:
+    msg: "{{ aws_check.stderr }}"
+  when: "'aws-cli' in aws_check.stderr"
+  tags: install

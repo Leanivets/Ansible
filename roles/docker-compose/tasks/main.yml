@@ -1,0 +1,40 @@
+- name: Check Docker Compose exists
+  shell: "docker-compose -v"
+  register: docker_compose_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install Docker Compose
+  shell: "{{ item }}"
+  with_items:
+    - 'curl -L "https://github.com/docker/compose/releases/download/1.23.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/bin/docker-compose'
+    - "chmod +x /usr/bin/docker-compose"
+  when: "'docker-compose version' not in docker_compose_check.stdout"
+  args:
+    warn: false
+  tags: install
+
+- name: Check Docker Compose version
+  shell: "docker-compose -v"
+  register: docker_compose_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Show Docker Compose version
+  debug:
+    msg: "{{ docker_compose_check.stdout }}"
+  when: "'docker-compose version' in docker_compose_check.stdout"
+  tags: install
+
+- name: Uninstall Docker Compose
+  shell: "rm -f /usr/bin/docker-compose"
+  when: "'docker-compose version' in docker_compose_check.stdout"
+  args:
+    warn: false
+  tags:
+    - never
+    - uninstall

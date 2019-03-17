@@ -1,0 +1,134 @@
+- name: Check Service exists
+  shell: "systemctl status jenkins"
+  register: jenkins_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install Jenkins
+  shell: "{{ item }}"
+  with_items:
+    - "wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -"
+    - "rm -f /etc/apt/sources.list.d/jenkins.list"
+    - "sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'"
+    - "apt-get update"
+    - "apt-get install -y jenkins"
+  when:
+    - "'jenkins.service - LSB:' not in jenkins_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags: install
+
+- name: Check Service exists
+  shell: "systemctl status jenkins"
+  register: jenkins_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Change init file
+  lineinfile:
+    dest: "/etc/default/jenkins"
+    insertafter: 'JAVA_ARGS='
+    regexp: '^JAVA_ARGS=\"\$JAVA_ARGS'
+    line: 'JAVA_ARGS="-Djenkins.install.runSetupWizard=false"'
+    state: present
+  when:
+    - "'jenkins.service - LSB:' in jenkins_check.stdout"
+    - ansible_os_family == "Debian"
+  tags: install
+
+- name: Change config file
+  lineinfile:
+    dest: "/var/lib/jenkins/config.xml"
+    regexp: 'NEW'
+    line: 'RUNNING'
+    state: present
+  when:
+    - "'jenkins.service - LSB:' in jenkins_check.stdout"
+    - ansible_os_family == "Debian"
+  tags: install
+
+- name: Create jenkins script directory
+  file:
+    path: "/var/lib/jenkins/init.groovy.d"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_user }}"
+    mode: 0775
+    state: directory
+  when: "'jenkins.service - LSB:' in jenkins_check.stdout"
+  tags: install
+
+- name: Create jenkins script file
+  template:
+    src: security.groovy.j2
+    dest: "/var/lib/jenkins/init.groovy.d/security.groovy"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_user }}"
+    mode: 0775
+  when: "'jenkins.service - LSB:' in jenkins_check.stdout"
+  tags: install
+
+- name: Restart Service
+  shell: "systemctl restart jenkins"
+  when:
+    - "'jenkins.service - LSB:' in jenkins_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags: install
+
+- name: Create Nginx config file
+  copy:
+      src: "http_nginx_file"
+      dest: "/etc/nginx/conf.d/jenkins.conf"
+  when: "'jenkins.service - LSB:' in jenkins_check.stdout"
+  tags: http
+
+- name: Create Nginx config file for HTTPS connection
+  copy:
+      src: "https_nginx_file"
+      dest: "/etc/nginx/conf.d/jenkins.conf"
+  when: "'jenkins.service - LSB:' in jenkins_check.stdout"
+  tags: https
+
+- name: Reload configuration into Nginx server
+  shell: "{{ item }}"
+  with_items:
+    - "rm -f /etc/nginx/sites-enabled/default"
+    - "rm -f /etc/nginx/sites-available/default"
+    - "service nginx reload"
+  when: "'jenkins.service - LSB:' in jenkins_check.stdout"
+  args:
+    warn: false
+  tags:
+    - http
+    - https
+
+- name: Wait Jenkins Service
+  wait_for:
+    host: 127.0.0.1
+    port: 8080
+    delay: 10
+  tags: install
+
+- name: Delete script file
+  shell: "rm -f /var/lib/jenkins/init.groovy.d/security.groovy"
+  when: "'jenkins.service - LSB:' in jenkins_check.stdout"
+  args:
+    warn: false
+  tags: install
+
+- name: Uninstall Jenkins
+  shell: "apt-get remove --purge -y jenkins"
+  when:
+    - "'jenkins.service - LSB:' in jenkins_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - never
+    - uninstall

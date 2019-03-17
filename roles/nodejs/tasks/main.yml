@@ -1,0 +1,47 @@
+- name: Check Node.js exists
+  shell: "node -v"
+  register: node_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install Node.js
+  shell: "{{ item }}"
+  with_items:
+    - "curl -sL https://deb.nodesource.com/setup_{{ node_version }}.x | bash -"
+    - "apt-get update"
+    - "apt-get install -y nodejs"
+  when:
+    - "'node: not found' in node_check.stderr"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags: install
+
+- name: Check Node.js and npm versions
+  shell: "node -v && npm -v"
+  register: node_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Show Node.js and npm versions
+  debug:
+    msg: "{{ node_check.stdout }}"
+  when: "'node: not found' not in node_check.stderr"
+  tags: install
+
+- name: Uninstall Node.js
+  shell: "{{ item }}"
+  with_items:
+    - "apt-get remove --purge -y nodejs"
+  when:
+    - "'node: not found' not in node_check.stderr"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - never
+    - uninstall
