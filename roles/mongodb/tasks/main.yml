@@ -1,0 +1,52 @@
+- name: Check MongoDB exists
+  shell: "mongo --version"
+  register: mongodb_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install MongoDB
+  shell: "{{ item }}"
+  with_items:
+    - "apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4"
+    - 'echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/{{ ansible_distribution|lower }} {{ ansible_distribution_release }}/mongodb-org/{{ mongodb_version}} multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-{{ mongodb_version }}.list'
+    - "apt-get update"
+    - "apt-get install -y mongodb-org"
+    - "systemctl enable mongod"
+    - "systemctl start mongod"
+  when:
+    - "'MongoDB shell version' not in mongodb_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags: install
+
+- name: Check MongoDB status
+  shell: "mongo --version"
+  register: mongodb_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Show MongoDB status
+  debug:
+    msg: "{{ mongodb_check.stdout }}"
+  when: "'MongoDB shell version' in mongodb_check.stdout"
+  tags: install
+
+- name: Uninstall MongoDB
+  shell: "{{ item }}"
+  with_items:
+    - "systemctl stop mongod"
+    - "systemctl disable mongod"
+    - "apt-get remove --purge -y mongodb*"
+  when:
+    - "'MongoDB shell version' in mongodb_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - never
+    - uninstall

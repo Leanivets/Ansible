@@ -1,0 +1,52 @@
+- name: Check Pritunl exists
+  shell: "pritunl version"
+  register: pritunl_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: always
+
+- name: Install Pritunl
+  shell: "{{ item }}"
+  with_items:
+    - 'echo "deb http://repo.pritunl.com/stable/apt {{ ansible_distribution_release }} main" | sudo tee /etc/apt/sources.list.d/pritunl.list'
+    - "apt-key adv --keyserver hkp://keyserver.ubuntu.com --recv 7568D9BB55FF9E5287D586017AE645C0CF8E292A"
+    - "apt-get update"
+    - "apt-get install -y pritunl"
+    - "systemctl enable pritunl"
+    - "systemctl start pritunl"
+  when:
+    - "'pritunl v' not in pritunl_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags: install
+
+- name: Check Pritunl status
+  shell: "pritunl version"
+  register: pritunl_check
+  ignore_errors: true
+  no_log: true
+  changed_when: false
+  tags: install
+
+- name: Show Pritunl status
+  debug:
+    msg: "{{ pritunl_check.stdout }}"
+  when: "'pritunl v' in pritunl_check.stdout"
+  tags: install
+
+- name: Uninstall Pritunl
+  shell: "{{ item }}"
+  with_items:
+    - "systemctl stop pritunl"
+    - "systemctl disable pritunl"
+    - "apt-get remove --purge -y pritunl*"
+  when:
+    - "'pritunl v' in pritunl_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags:
+    - never
+    - uninstall
