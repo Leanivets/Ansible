@@ -36,6 +36,36 @@
   when: "'MongoDB shell version' in mongodb_check.stdout"
   tags: install
 
+- name: Create Backup directory
+  file:
+    path: "/mongo_backup"
+    owner: "root"
+    group: "root"
+    mode: 0775
+    state: directory
+  when: "'MongoDB shell version' in mongodb_check.stdout"
+  tags:
+    - install
+    - cron
+
+- name: Create Cron file
+  copy:
+      src: "cron_backup"
+      dest: "/mongo_backup/cron_backup"
+  when: "'MongoDB shell version' in mongodb_check.stdout"
+  tags:
+    - install
+    - cron
+
+- name: Change Cron
+  shell: "crontab /mongo_backup/cron_backup"
+  when: "'MongoDB shell version' in mongodb_check.stdout"
+  args:
+    warn: false
+  tags:
+    - install
+    - cron
+
 - name: Uninstall MongoDB
   shell: "{{ item }}"
   with_items:

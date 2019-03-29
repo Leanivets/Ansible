@@ -1,0 +1,2 @@
+#Backup MongoDB
+*/10 * * * * rm -rf /mongo_backup/mongo_dump && mongodump --out /mongo_backup/mongo_dump
