@@ -1,2 +1,2 @@
-gitlab_revision: ce
-gitlab_url: http://gitlab.local
+pritunl_cert: cert.pem
+pritunl_privkey: privkey.pem

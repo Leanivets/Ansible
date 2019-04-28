@@ -13,8 +13,30 @@
     - "apt-key adv --keyserver hkp://keyserver.ubuntu.com --recv 7568D9BB55FF9E5287D586017AE645C0CF8E292A"
     - "apt-get update"
     - "apt-get install -y pritunl"
+  when:
+    - "'pritunl v' not in pritunl_check.stdout"
+    - ansible_os_family == "Debian"
+  args:
+    warn: false
+  tags: install
+
+- name: Create Pritunl config file
+  copy:
+      src: "pritunl.conf"
+      dest: "/etc/pritunl.conf"
+  when: "'pritunl v' not in pritunl_check.stdout"
+  tags: install
+
+- name: Postinstall Pritunl
+  shell: "{{ item }}"
+  with_items:
     - "systemctl enable pritunl"
     - "systemctl start pritunl"
+    - "pritunl set app.server_port 10443"
+    - "pritunl set app.redirect_server false"
+    - "pritunl set app.reverse_proxy true"
+    - "pritunl set app.server_ssl false"
+    - "systemctl restart pritunl"
   when:
     - "'pritunl v' not in pritunl_check.stdout"
     - ansible_os_family == "Debian"
@@ -35,6 +57,48 @@
     msg: "{{ pritunl_check.stdout }}"
   when: "'pritunl v' in pritunl_check.stdout"
   tags: install
+
+- name: Create Nginx config file for HTTPS connection
+  copy:
+      src: "https_nginx_file"
+      dest: "/etc/nginx/conf.d/pritunl.conf"
+  when: "'pritunl v' in pritunl_check.stdout"
+  tags: install
+
+- name: Create Cert file for HTTPS connection
+  copy:
+      src: "{{ pritunl_cert }}"
+      dest: "/etc/ssl/pritunl.crt"
+  when: "'pritunl v' in pritunl_check.stdout"
+  tags: install
+
+- name: Create Privat key file for HTTPS connection
+  copy:
+      src: "{{ pritunl_privkey }}"
+      dest: "/etc/ssl/pritunl.key"
+  when: "'pritunl v' in pritunl_check.stdout"
+  tags: install
+
+- name: Reload configuration into Nginx server
+  shell: "{{ item }}"
+  with_items:
+    - "rm -f /etc/nginx/sites-enabled/default"
+    - "rm -f /etc/nginx/sites-available/default"
+    - "service nginx reload"
+  when: "'pritunl v' in pritunl_check.stdout"
+  args:
+    warn: false
+  tags: install
+
+- name: Restore
+  shell: "{{ item }}"
+  with_items:
+    - "cp pritunl.uuid /var/lib/pritunl/pritunl.uuid"
+    - "mongorestore --drop mongo_dump"
+    - "systemctl restart pritunl"
+  args:
+    warn: false
+  tags: restore
 
 - name: Uninstall Pritunl
   shell: "{{ item }}"
