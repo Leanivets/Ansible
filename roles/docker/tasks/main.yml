@@ -23,6 +23,22 @@
     warn: false
   tags: install
 
+- name: Install Docker CE
+  shell: "{{ item }}"
+  with_items:
+    - "yum install -y yum-utils"
+    - "yum install -y device-mapper-persistent-data"
+    - "yum install -y lvm2"
+    - "yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
+    - "yum install -y docker-ce docker-ce-cli containerd.io"
+    - "systemctl start docker"
+  when:
+    - "'Docker version' not in docker_check.stdout"
+    - ansible_distribution == 'CentOS'
+  args:
+    warn: false
+  tags: install
+
 - name: Check Docker version
   shell: "docker -v"
   register: docker_check
